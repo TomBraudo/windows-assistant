@@ -7,6 +7,7 @@ import ctypes
 import os
 import subprocess
 import shutil
+import string
 from ctypes import wintypes
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL
@@ -29,6 +30,168 @@ user32.SystemParametersInfoW.argtypes = [
     wintypes.UINT
 ]
 user32.SystemParametersInfoW.restype = wintypes.BOOL
+
+
+# --- Helper: Drive & File Search (ported from test_find_files) ---
+def _get_available_drives():
+    """Returns a list of available drive letters (e.g., ['C:\\', 'D:\\'])."""
+    drives = []
+    for letter in string.ascii_uppercase:
+        drive_path = f"{letter}:\\"
+        if os.path.exists(drive_path):
+            drives.append(drive_path)
+    return drives
+
+
+def _search_directory_recursive(root_path: str, target_filename: str):
+    """
+    Recursively searches a directory using os.scandir for speed.
+    Returns the full path immediately upon finding a match.
+    """
+    try:
+        # scandir is an iterator (faster/lighter than os.walk)
+        with os.scandir(root_path) as entries:
+            for entry in entries:
+                try:
+                    # 1. Check if it's the file we want
+                    if entry.is_file():
+                        # Case-insensitive comparison, substring match
+                        if target_filename.lower() in entry.name.lower():
+                            return entry.path
+
+                    # 2. If directory, recurse into it
+                    elif entry.is_dir(follow_symlinks=False):
+                        # Optimization: Skip massive system folders that slow us down
+                        if entry.name.lower() in ["windows", "program files", "program files (x86)"]:
+                            # These can be searched later if needed
+                            continue
+
+                        found = _search_directory_recursive(entry.path, target_filename)
+                        if found:
+                            return found
+                except (PermissionError, OSError):
+                    # Skip entries we can't access
+                    continue
+    except (PermissionError, OSError):
+        return None
+    return None
+
+
+def smart_find_file(filename: str):
+    """
+    Smart, system-wide search for a file name.
+
+    Strategy (ported from test_find_files.py):
+    1) Search the current user's home directory first (fast / high hit rate).
+    2) Search all other available drives except the system drive.
+    3) Deep scan the rest of the system drive, excluding the Users folder
+       (which was already covered in step 1).
+
+    Returns:
+        - Full path to the first matching file (case-insensitive, substring match),
+          or None if nothing is found.
+    """
+    print(f"Searching for '{filename}' across the system...")
+
+    # --- PHASE 1: Smart Search (User Folder) ---
+    user_home = os.path.expanduser("~")
+    print(f"   > Checking User Home ({user_home})...")
+    result = _search_directory_recursive(user_home, filename)
+    if result:
+        return result
+
+    # --- PHASE 2: Other Drives (D:, E:, etc) ---
+    drives = _get_available_drives()
+    system_drive = os.getenv("SystemDrive", "C:") + "\\"
+
+    for drive in drives:
+        # Skip system drive for now (user folder already scanned, rest done in phase 3)
+        if drive.upper() == system_drive.upper():
+            continue
+
+        print(f"   > Checking Drive {drive}...")
+        result = _search_directory_recursive(drive, filename)
+        if result:
+            return result
+
+    # --- PHASE 3: The Rest of the System Drive (Deep Scan) ---
+    print(f"   > Checking System Root ({system_drive}) - this may take time...")
+
+    # Use os.walk here because we need to carefully skip the User folder we already scanned
+    for root, dirs, files in os.walk(system_drive):
+        # Optimization: Don't re-scan Users
+        if "Users" in dirs:
+            dirs.remove("Users")
+
+        for name in files:
+            if filename.lower() in name.lower():
+                return os.path.join(root, name)
+
+    return None
+
+
+def _normalize_search_query(raw: str) -> str:
+    """
+    Normalizes a raw user query into a clean search token.
+
+    - Strips surrounding quotes and whitespace.
+    - Strips a leading '@' used to reference filenames (e.g. '@test_find_files.py').
+    """
+    if raw is None:
+        return ""
+    q = raw.strip().strip('"').strip("'")
+    if q.startswith("@"):
+        q = q[1:]
+    return q.strip()
+
+
+def _looks_like_explicit_filename(token: str) -> bool:
+    """
+    Heuristic: does this look like a concrete filename (e.g. 'test_find_files.py')?
+    """
+    if not token:
+        return False
+    # Contains a path separator or a dot that isn't the first/last char
+    if any(sep in token for sep in ("/", "\\")):
+        return True
+    dot_idx = token.rfind(".")
+    if dot_idx > 0 and dot_idx < len(token) - 1:
+        return True
+    return False
+
+
+def _candidate_executables_from_name(name: str):
+    """
+    Given a bare app/game name like 'hearthstone' or 'fortnite',
+    generate a small ordered list of plausible executable names.
+    """
+    base = name.strip().strip('"').strip("'")
+    if not base:
+        return []
+
+    candidates = []
+    simple = base
+    title = base.title()
+
+    # Simple .exe forms
+    candidates.append(f"{simple}.exe")
+    if title.lower() != simple.lower():
+        candidates.append(f"{title}.exe")
+
+    # Common launcher/client patterns
+    candidates.append(f"{simple}Launcher.exe")
+    candidates.append(f"{title}Launcher.exe")
+    candidates.append(f"{simple}Client.exe")
+    candidates.append(f"{title}Client.exe")
+
+    # De-duplicate preserving order
+    seen = set()
+    uniq = []
+    for c in candidates:
+        if c.lower() not in seen:
+            uniq.append(c)
+            seen.add(c.lower())
+    return uniq
 
 # --- Helper: Find Real Desktop ---
 def get_desktop_path():
@@ -152,47 +315,108 @@ def list_directory(path: str):
 # --- 6. Advanced Tools ---
 def search_files(filename: str, search_path: str = None, max_results: int = 5):
     """
-    Searches for a file by name.
-    Priority 1: Desktop
-    Priority 2: C:\\Program Files (x86)
+    High-level wrapper around the smart file search.
+
+    - If `search_path` is provided, only that directory tree is searched (fast, targeted).
+    - Otherwise, uses the full smart system-wide search strategy from `smart_find_file`.
+
+    Returns a human-readable string (for the agent) describing the result.
     """
     try:
-        # Define search paths: Desktop first, then Program Files (x86)
-        paths_to_search = []
-        
+        # If a specific path is provided, do a focused recursive scan there
         if search_path:
-            # If user provided a specific path, search ONLY that
-            paths_to_search.append(search_path)
-        else:
-            # Default behavior: Priority list
-            paths_to_search.append(get_desktop_path())
-            paths_to_search.append(r"C:\Program Files (x86)")
+            if not os.path.exists(search_path):
+                return f"Error: Path does not exist: {search_path}"
 
-        matches = []
-        
-        for current_path in paths_to_search:
-            if not os.path.exists(current_path):
-                continue
-                
-            print(f"DEBUG: Searching for '{filename}' in {current_path}...")
-            
-            for root, dirs, files in os.walk(current_path):
-                for file in files:
-                    if filename.lower() in file.lower():
-                        full_path = os.path.join(root, file)
-                        matches.append(full_path)
-                        if len(matches) >= max_results:
-                            return f"Found first {max_results} matches:\n" + "\n".join(matches)
-            
-            # If we found matches in this priority tier, stop and return them
-            # (Don't search Program Files if we found it on Desktop)
+            print(f"Searching for '{filename}' in '{search_path}'...")
+            matches = []
+
+            # Use scandir-based recursion starting from the given path
+            result = _search_directory_recursive(search_path, filename)
+            if result:
+                matches.append(result)
+
             if matches:
-                return f"Found matches in {current_path}:\n" + "\n".join(matches)
+                # For now `max_results` is effectively 1 because `_search_directory_recursive`
+                # returns on first match; this keeps behavior consistent with the smart search.
+                return "Found matches:\n" + "\n".join(matches)
 
-        return f"No files found named '{filename}' in checked locations."
-        
+            return f"No files found named '{filename}' under {search_path}."
+
+        # No specific path: use the full smart system-wide search
+        result = smart_find_file(filename)
+        if result:
+            return f"Found: {result}"
+
+        return f"No files found named '{filename}' anywhere that I can access."
+
     except Exception as e:
         return f"Search failed: {str(e)}"
+
+
+def smart_search_and_open(target: str):
+    """
+    Smart entry point for the agent when the user says things like:
+
+    - "open @test_find_files.py"
+    - "find test_find_files.py"
+    - "start hearthstone"
+    - "launch fortnite"
+
+    Behavior:
+    - If the target looks like an explicit filename or path (has an extension or slash),
+      search for that exact filename using the smart system-wide search, then open it.
+    - If it's a bare name (no extension), assume it's an app/game and try a small set
+      of plausible executable names (e.g. 'hearthstone.exe', 'Hearthstone.exe',
+      'hearthstoneLauncher.exe', etc.), preferring the first one that exists.
+    """
+    try:
+        query = _normalize_search_query(target)
+        if not query:
+            return "Error: No target provided to search/open."
+
+        # Case 1: explicit filename/path
+        if _looks_like_explicit_filename(query):
+            path = smart_find_file(query)
+            if not path:
+                return f"Could not find a file matching '{query}'."
+
+            try:
+                os.startfile(path)
+            except Exception as e:
+                return f"Found '{path}' but failed to open it: {e}"
+
+            return f"Opened file: {path}"
+
+        # Case 2: bare app/game name → try candidate executables
+        candidates = _candidate_executables_from_name(query)
+        if not candidates:
+            return f"Could not infer an executable from '{query}'."
+
+        last_error = None
+        for exe_name in candidates:
+            path = smart_find_file(exe_name)
+            if not path:
+                continue
+
+            try:
+                os.startfile(path)
+                return f"Launcher started: {path}"
+            except Exception as e:
+                # Remember but keep trying other candidates
+                last_error = f"Found '{path}' but failed to launch it: {e}"
+
+        if last_error:
+            return last_error
+
+        pretty_candidates = ", ".join(candidates)
+        return (
+            f"Could not find a suitable launcher for '{query}'. "
+            f"Tried candidates: {pretty_candidates}"
+        )
+
+    except Exception as e:
+        return f"Smart search/open failed: {str(e)}"
 
 def launch_app(app_name: str):
     """

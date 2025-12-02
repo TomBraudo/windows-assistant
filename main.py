@@ -1,5 +1,6 @@
 from app.tools.registry import ToolRegistry
 from app.tools import os_ops
+from app.tools.web_search import web_search
 from app.core.agent import Agent
 import os
 
@@ -48,6 +49,27 @@ def main():
         os_ops.launch_app,
         "Launches an application by name (e.g. 'notepad', 'steam', 'chrome').",
         sensitive=True # Confirm before launching apps
+    )
+
+    registry.register(
+        "smart_search_and_open",
+        os_ops.smart_search_and_open,
+        (
+            "Smartly finds and opens a file or app from an ambiguous name. "
+            "Use this when the user says things like 'open hearthstone', "
+            "'launch fortnite', or refers to a specific file like "
+            "'@test_find_files.py'. It will treat explicit filenames exactly, "
+            "and bare names as app launchers."
+        ),
+        sensitive=True
+    )
+
+    # --- WEB TOOLS ---
+    registry.register(
+        "web_search",
+        web_search,
+        "Performs a web search using SerpAPI and returns a concise summary of the top results.",
+        sensitive=False,
     )
 
     # 2. Setup the "Brain" (Agent)

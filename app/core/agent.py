@@ -31,6 +31,26 @@ class Agent:
         2. **USE TOOLS**: If a tool exists for the user's request, call it immediately.
         3. **CONFIRMATION**: After running a tool, simply state what was done (e.g., "I have created the file at [path].").
         4. **DEFAULT PATHS**: If the user asks for the "Desktop" or doesn't specify a folder, ALWAYS use the 'Real Desktop Path' provided above.
+        5. **SMART FILE / APP OPENING**:
+           - When the user wants to open or launch something (e.g. "open X", "launch X", "run X"):
+             *If X looks like a concrete filename or path* (has an extension like ".py", ".txt", ".exe"
+             or contains a slash/backslash, or is written like "@test_find_files.py"), you MAY call
+             'smart_search_and_open' directly with that exact string.
+           - If the user only gives a bare name with no extension (e.g. "hearthstone", "fortnite", "battlenet",
+             "whatsapp"), you MUST NOT call 'smart_search_and_open' directly with that bare name.
+             Instead, first resolve what they most likely meant.
+        6. **AMBIGUOUS OR UNCERTAIN REQUESTS (MANDATORY FLOW)**:
+           - For bare or ambiguous names without an extension, you MUST do the following in order:
+             1) Reason about what the user likely means (e.g. game launcher, desktop app, etc.).
+             2) Call the 'web_search' tool to look up the correct Windows application and its typical
+                executable / launcher name (for example, mapping "battlenet" to "Battle.net.exe",
+                or "whatsapp" to the correct Windows app/launcher name).
+             3) From the web search results, explicitly choose ONE concrete filename (including extension),
+                and then call 'smart_search_and_open' with that concrete filename so it can locate and open
+                the correct file.
+           - Do NOT brute-force or guess multiple exe names yourself when the request is ambiguous; always
+             use 'web_search' first to refine the request into a specific filename, then perform file search
+             and launch using that filename.
         """
 
     def process(self, user_input: str) -> str:

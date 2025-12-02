@@ -1,0 +1,4 @@
+comtypes
+litellm
+pycaw
+python-dotenv

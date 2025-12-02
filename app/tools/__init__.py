@@ -1,5 +1,5 @@
 """
-Tools module containing OS-level operation functions.
+Tools module containing OS-level operation functions and web utilities.
 """
 
 from .os_ops import (
@@ -10,10 +10,11 @@ from .os_ops import (
     get_caps_lock_state,
     set_caps_lock,
     create_and_open_file,
-    create_folder,      # <--- Added
-    list_directory,     # <--- Added
+    create_folder,
+    list_directory,
     get_desktop_path,
 )
+from .web_search import web_search
 from .registry import ToolRegistry
 
 __all__ = [
@@ -24,8 +25,9 @@ __all__ = [
     "get_caps_lock_state",
     "set_caps_lock",
     "create_and_open_file",
-    "create_folder",    # <--- Added
-    "list_directory",   # <--- Added
+    "create_folder",
+    "list_directory",
     "get_desktop_path",
+    "web_search",
     "ToolRegistry",
 ]
