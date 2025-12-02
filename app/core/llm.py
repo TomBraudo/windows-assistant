@@ -31,14 +31,27 @@ class LLMClient:
         """Verify that the API key is configured for the selected model."""
         # Extract provider from model name
         provider = self.model.split("/")[0] if "/" in self.model else "unknown"
-        
+
         # Check for required API keys
-        if provider == "groq" and not os.getenv("GROQ_API_KEY"):
-            raise ValueError("GROQ_API_KEY not found in environment variables")
-        elif provider == "gemini" and not os.getenv("GOOGLE_API_KEY"):
-            raise ValueError("GOOGLE_API_KEY not found in environment variables")
-        elif provider == "deepseek" and not os.getenv("DEEPSEEK_API_KEY"):
-            raise ValueError("DEEPSEEK_API_KEY not found in environment variables")
+        if provider == "groq":
+            if not os.getenv("GROQ_API_KEY"):
+                raise ValueError("GROQ_API_KEY not found in environment variables")
+        elif provider == "gemini":
+            if not os.getenv("GOOGLE_API_KEY"):
+                raise ValueError("GOOGLE_API_KEY not found in environment variables")
+        elif provider == "deepseek":
+            if not os.getenv("DEEPSEEK_API_KEY"):
+                raise ValueError("DEEPSEEK_API_KEY not found in environment variables")
+        elif provider == "openrouter":
+            # LiteLLM expects OPENROUTER_API_KEY; allow mapping from X_AI_GROK_API_KEY
+            if not os.getenv("OPENROUTER_API_KEY"):
+                grok_key = os.getenv("X_AI_GROK_API_KEY")
+                if grok_key:
+                    os.environ["OPENROUTER_API_KEY"] = grok_key
+                else:
+                    raise ValueError(
+                        "OPENROUTER_API_KEY or X_AI_GROK_API_KEY not found in environment variables"
+                    )
     
     def complete(self, messages: list, **kwargs):
         """

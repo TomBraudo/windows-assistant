@@ -3,12 +3,16 @@ import os
 import platform
 from typing import List, Dict, Any, Optional
 from .llm import LLMClient
+from .refiner_agent import PromptRefiner
 from app.tools.registry import ToolRegistry
-from app.tools.os_ops import get_desktop_path # <--- Import the helper
+from app.tools.os_ops import get_desktop_path  # <--- Import the helper
 
 class Agent:
     def __init__(self, registry: ToolRegistry, model: str = "groq/llama-3.3-70b-versatile"):
+        # Main tool-using LLM (Groq)
         self.llm = LLMClient(model)
+        # Prompt refiner LLM (OpenRouter Grok) used before each turn
+        self.refiner = PromptRefiner()
         self.registry = registry
         self.history: List[Dict[str, Any]] = []
         
@@ -56,10 +60,17 @@ class Agent:
     def process(self, user_input: str) -> str:
         """Main loop: Listen -> Think -> Act -> Reply"""
         
-        # 1. Add User Input to History
-        self.history.append({"role": "user", "content": user_input})
+        # 1. First, refine the raw user input into a tool-friendly instruction
+        try:
+            refined_input = self.refiner.refine(user_input)
+        except Exception:
+            # If refinement fails for any reason, fall back to the original input
+            refined_input = user_input
         
-        # 2. First Call: Ask LLM (with Tools)
+        # 2. Add (refined) User Input to History
+        self.history.append({"role": "user", "content": refined_input})
+        
+        # 3. First Call: Ask LLM (with Tools)
         response = self.llm.complete(
             messages=[{"role": "system", "content": self.system_prompt}] + self.history,
             tools=self.registry.get_tool_schema(),
@@ -68,7 +79,7 @@ class Agent:
         
         msg = response.choices[0].message
         
-        # 3. Check for Tool Calls
+        # 4. Check for Tool Calls
         if hasattr(msg, 'tool_calls') and msg.tool_calls:
             self.history.append(msg)
             
@@ -94,7 +105,7 @@ class Agent:
                     "content": result_str
                 })
 
-            # 4. Second Call: Get Final Response based on tool results
+            # 5. Second Call: Get Final Response based on tool results
             final_response = self.llm.complete(
                 messages=[{"role": "system", "content": self.system_prompt}] + self.history
             )

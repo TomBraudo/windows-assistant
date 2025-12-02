@@ -2,3 +2,4 @@ comtypes
 litellm
 pycaw
 python-dotenv
+python-docx

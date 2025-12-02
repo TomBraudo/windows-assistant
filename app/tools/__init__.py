@@ -1,5 +1,5 @@
 """
-Tools module containing OS-level operation functions and web utilities.
+Tools module containing OS-level operation functions and web/image utilities.
 """
 
 from .os_ops import (
@@ -15,6 +15,7 @@ from .os_ops import (
     get_desktop_path,
 )
 from .web_search import web_search
+from .image_tools import find_image
 from .registry import ToolRegistry
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     "list_directory",
     "get_desktop_path",
     "web_search",
+    "find_image",
     "ToolRegistry",
 ]

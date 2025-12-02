@@ -1,6 +1,7 @@
 from app.tools.registry import ToolRegistry
 from app.tools import os_ops
 from app.tools.web_search import web_search
+from app.tools.image_tools import find_image
 from app.core.agent import Agent
 import os
 
@@ -52,6 +53,16 @@ def main():
     )
 
     registry.register(
+        "open_url",
+        os_ops.open_url,
+        (
+            "Opens a URL in a browser. Prefer this when the user asks to open a website "
+            "or a specific web page (e.g. 'open Chrome on https://web.whatsapp.com')."
+        ),
+        sensitive=False,
+    )
+
+    registry.register(
         "smart_search_and_open",
         os_ops.smart_search_and_open,
         (
@@ -69,6 +80,18 @@ def main():
         "web_search",
         web_search,
         "Performs a web search using SerpAPI and returns a concise summary of the top results.",
+        sensitive=False,
+    )
+
+    # --- IMAGE TOOLS ---
+    registry.register(
+        "find_image",
+        find_image,
+        (
+            "Finds a relevant image on the web using SerpAPI image search, "
+            "downloads it to a local folder (e.g. under Pictures/Desktop), "
+            "and returns the saved image path for use in Word/PowerPoint."
+        ),
         sensitive=False,
     )
 

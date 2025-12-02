@@ -5,12 +5,15 @@ Contains functions for volume, mouse speed, caps lock, file operations, search, 
 
 import ctypes
 import os
+import re
 import subprocess
 import shutil
 import string
+import webbrowser
 from ctypes import wintypes
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL
+from docx import Document
 
 # --- Constants & Structures ---
 SPI_GETMOUSESPEED = 0x0070
@@ -139,9 +142,23 @@ def _normalize_search_query(raw: str) -> str:
     """
     if raw is None:
         return ""
+
+    # Basic cleaning
     q = raw.strip().strip('"').strip("'")
+
+    # Strip leading '@' used for filename references
     if q.startswith("@"):
         q = q[1:]
+
+    q = q.strip()
+
+    # If the query looks like a full sentence that happens to mention a filename
+    # (e.g. "Find and open the file named offside_rule_report.docx"),
+    # extract just the last "word.ext" style token.
+    matches = re.findall(r"([^\s\\/:*?\"<>|]+\.[^\s\\/:*?\"<>|]+)", q)
+    if matches:
+        q = matches[-1]
+
     return q.strip()
 
 
@@ -257,22 +274,44 @@ def set_caps_lock(target_state: bool):
 # --- 4. File Operations ---
 def create_and_open_file(path: str, content: str):
     """
-    Creates a text file with the given content and opens it.
+    Creates a file with the given content and opens it.
+
+    Behavior:
+    - If the path ends with '.docx', a real Word document is created using python-docx,
+      with `content` inserted as a paragraph.
+    - For all other extensions, a UTF-8 text file is created with the raw content.
     """
     try:
         if not os.path.isabs(path):
             path = os.path.join(get_desktop_path(), path)
         full_path = os.path.abspath(path)
-        
+
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         print(f"DEBUG: Writing to {full_path}")
-        with open(full_path, "w", encoding="utf-8") as f:
-            f.write(content)
-            
+
+        _, ext = os.path.splitext(full_path)
+        ext = ext.lower()
+
+        if ext == ".docx":
+            # Create a real Word document
+            doc = Document()
+            # Simple behavior: single paragraph with the provided content
+            doc.add_paragraph(content)
+            doc.save(full_path)
+        else:
+            # Fallback: plain text file
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
         if not os.path.exists(full_path):
             return f"Error: Write operation finished, but file not found at {full_path}"
-            
-        os.startfile(full_path)
+
+        try:
+            os.startfile(full_path)
+        except Exception as e:
+            # File exists but couldn't be opened; report gracefully
+            return f"File created at: {full_path}, but failed to open it automatically: {e}"
+
         return f"Success. File created and opened at: {full_path}"
     except Exception as e:
         return f"Error processing file: {str(e)}"
@@ -428,3 +467,27 @@ def launch_app(app_name: str):
         return f"Command sent to launch: {app_name}"
     except Exception as e:
         return f"Failed to launch {app_name}: {str(e)}"
+
+
+def open_url(url: str, force_chrome: bool = True):
+    """
+    Opens a URL in the browser.
+
+    - If force_chrome is True, it will first try to open the URL in Chrome
+      (assuming 'chrome' is available on PATH).
+    - If that fails, it falls back to the system default browser.
+    """
+    try:
+        if force_chrome:
+            try:
+                # Use Windows 'start' with chrome; relies on chrome in PATH
+                subprocess.Popen(f'start "" chrome "{url}"', shell=True)
+                return f"Opened in Chrome: {url}"
+            except Exception:
+                # Fall back to default browser below
+                pass
+
+        webbrowser.open(url)
+        return f"Opened URL in default browser: {url}"
+    except Exception as e:
+        return f"Failed to open URL '{url}': {e}"
