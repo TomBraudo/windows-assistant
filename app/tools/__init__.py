@@ -16,6 +16,7 @@ from .os_ops import (
 )
 from .web_search import web_search
 from .image_tools import find_image
+from .ppt_tools import create_presentation
 from .registry import ToolRegistry
 
 __all__ = [
@@ -31,5 +32,6 @@ __all__ = [
     "get_desktop_path",
     "web_search",
     "find_image",
+    "create_presentation",
     "ToolRegistry",
 ]

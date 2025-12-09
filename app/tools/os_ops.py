@@ -14,6 +14,7 @@ from ctypes import wintypes
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL
 from docx import Document
+from .web_search import web_search
 
 # --- Constants & Structures ---
 SPI_GETMOUSESPEED = 0x0070
@@ -128,6 +129,53 @@ def smart_find_file(filename: str):
 
         for name in files:
             if filename.lower() in name.lower():
+                return os.path.join(root, name)
+
+    return None
+
+
+def _smart_find_exact_file(filename: str):
+    """
+    Variant of smart_find_file that looks for an exact filename match
+    (case-insensitive) instead of a substring match.
+
+    This is primarily used for launching executables discovered via web_search,
+    where we want to avoid matching config/XML files whose names merely contain
+    the executable name.
+    """
+    target = filename.lower()
+
+    print(f"Searching for exact filename '{filename}' across the system...")
+
+    # --- PHASE 1: Smart Search (User Folder) ---
+    user_home = os.path.expanduser("~")
+    print(f"   > Checking User Home ({user_home}) for exact match...")
+    result = _search_directory_recursive(user_home, target)
+    if result and os.path.basename(result).lower() == target:
+        return result
+
+    # --- PHASE 2: Other Drives (D:, E:, etc) ---
+    drives = _get_available_drives()
+    system_drive = os.getenv("SystemDrive", "C:") + "\\"
+
+    for drive in drives:
+        if drive.upper() == system_drive.upper():
+            continue
+
+        print(f"   > Checking Drive {drive} for exact match...")
+        result = _search_directory_recursive(drive, target)
+        if result and os.path.basename(result).lower() == target:
+            return result
+
+    # --- PHASE 3: The Rest of the System Drive (Deep Scan) ---
+    print(f"   > Checking System Root ({system_drive}) for exact match - this may take time...")
+
+    for root, dirs, files in os.walk(system_drive):
+        if "Users" in dirs:
+            dirs.remove("Users")
+
+        for name in files:
+            if name.lower() == target:
                 return os.path.join(root, name)
 
     return None
@@ -459,14 +507,63 @@ def smart_search_and_open(target: str):
 
 def launch_app(app_name: str):
     """
-    Launches an application by name or path.
+    Launches an application by name or path, using best-effort resolution.
+
+    Best-practice behavior:
+    - If `app_name` looks like an explicit path or filename with extension
+      (e.g. 'C:\\Program Files\\App\\app.exe', 'chrome.exe'), delegate to
+      `smart_search_and_open` so the robust file search logic is reused.
+    - If it is a friendly name without extension (e.g. 'powerpoint', 'word',
+      'whatsapp'), first use `web_search` to discover the typical Windows
+      executable name (e.g. 'POWERPNT.EXE'), then call `smart_search_and_open`
+      with that concrete filename so the correct binary is located and run.
+    - Only if all of the above fail, fall back to a naive `start <app_name>`,
+      which works only when the app is on PATH or registered with that name.
     """
+    name = (app_name or "").strip().strip('"').strip("'")
+    if not name:
+        return "Error: No application name provided."
+
+    # Case 1: looks like an explicit path or has an extension → let the smart
+    # search/open logic handle it.
+    if any(sep in name for sep in ("/", "\\")) or re.search(r"\.[A-Za-z0-9]+$", name):
+        return smart_search_and_open(name)
+
+    # Case 2: friendly name → use web search to discover the executable
+    # Ask specifically for the Windows executable filename; we'll regex for *.exe
+    search_query = f'Windows executable file name for "{name}" application'
+    search_result = web_search(search_query, max_results=3)
+
+    # Try to extract candidate .exe names from the textual search summary
+    exe_candidates = re.findall(r"\b([\w\-.]+\.exe)\b", search_result, flags=re.IGNORECASE)
+    exe_candidates = list(dict.fromkeys(exe_candidates))  # de-duplicate, preserve order
+
+    for exe in exe_candidates:
+        # For executables, we want an exact filename match to avoid picking up
+        # unrelated config/XML files that merely contain the exe name.
+        path = _smart_find_exact_file(exe)
+        if path:
+            try:
+                os.startfile(path)
+                return f"Resolved '{name}' to '{exe}' and launched it from: {path}"
+            except Exception as e:
+                # If launching fails, keep trying other candidates
+                last_error = f"Found '{path}' for '{exe}' but failed to launch it: {e}"
+                continue
+
+    # If we couldn't resolve an exe, last-resort naive attempt
     try:
-        print(f"DEBUG: Launching {app_name}")
-        subprocess.Popen(f"start {app_name}", shell=True)
-        return f"Command sent to launch: {app_name}"
+        print(f"DEBUG: Launching via naive start: {name}")
+        subprocess.Popen(f"start {name}", shell=True)
+        return (
+            f"Could not confidently resolve an executable for '{name}'. "
+            f"Sent a naive start command instead: {name}"
+        )
     except Exception as e:
-        return f"Failed to launch {app_name}: {str(e)}"
+        return (
+            f"Failed to launch '{name}' via smart resolution or naive start. "
+            f"Last error: {str(e)}"
+        )
 
 
 def open_url(url: str, force_chrome: bool = True):

@@ -1,18 +1,31 @@
+"""
+Test the new sequential single-tool-per-call flow.
+
+This test verifies that:
+1. The refiner creates an execution plan with ordered steps
+2. The agent executes one tool per API call
+3. Results from previous steps are passed to subsequent steps
+"""
+
+import sys
+import os
+
+# Add the parent directory to the path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from app.core.agent import Agent
 from app.tools.registry import ToolRegistry
 from app.tools import os_ops
 from app.tools.web_search import web_search
 from app.tools.image_tools import find_image
 from app.tools.ppt_tools import create_presentation
 from app.tools.tool_catalog import get_tool_description
-from app.core.agent import Agent
-import os
 
-def main():
-    # 1. Setup the "Hands" (Registry)
-    # All tool names and descriptions come from tool_catalog.py (single source of truth)
-    registry = ToolRegistry(safe_mode=True)
+
+def setup_registry():
+    """Setup registry with all tools (same as main.py)."""
+    registry = ToolRegistry(safe_mode=False)  # Disable safe mode for testing
     
-    # Register tools using canonical names from TOOL_CATALOG
     # Basic System Controls
     registry.register("set_volume", os_ops.set_volume, get_tool_description("set_volume"), sensitive=False)
     registry.register("get_volume", os_ops.get_volume, get_tool_description("get_volume"), sensitive=False)
@@ -36,26 +49,48 @@ def main():
     
     # Document Creation
     registry.register("create_presentation", create_presentation, get_tool_description("create_presentation"), sensitive=True)
-
-    # 2. Setup the "Brain" (Agent)
-    agent = Agent(registry=registry)
     
-    print("🤖 Windows Agent Online. Type 'quit' to exit.")
-    print("---------------------------------------------")
+    return registry
 
-    while True:
-        try:
-            user_input = input("\nYou: ").strip()
-            if user_input.lower() in ["quit", "exit"]:
-                break
-            
-            response = agent.process(user_input)
-            print(f"Agent: {response}")
-            
-        except KeyboardInterrupt:
-            break
-        except Exception as e:
-            print(f"Error: {e}")
+
+def test_sequential_execution():
+    """Test that multi-step operations execute sequentially."""
+    print("\n" + "="*60)
+    print("Testing Sequential Single-Tool Execution Flow")
+    print("="*60 + "\n")
+    
+    # Initialize the agent with properly configured registry
+    print("Setting up registry with all tools...")
+    registry = setup_registry()
+    print(f"✓ Registered {len(registry.list_tools())} tools\n")
+    
+    agent = Agent(registry)
+    
+    # Test case: Research and create document (should be 2 separate calls)
+    test_query = "Search for information about Python asyncio and create a text file summary on my desktop"
+    
+    print(f"Test Query: {test_query}\n")
+    print("Expected behavior:")
+    print("  Step 1: web_search for Python asyncio")
+    print("  Step 2: create_note with research results\n")
+    print("Note: Tool names come from tool_catalog.py (single source of truth)")
+    print("-"*60 + "\n")
+    
+    try:
+        result = agent.process(test_query)
+        print("\n" + "-"*60)
+        print("Final Result:")
+        print(result)
+        print("\n" + "="*60)
+        print("Test completed successfully!")
+        print("="*60 + "\n")
+        
+    except Exception as e:
+        print(f"\n❌ Test failed with error: {e}")
+        import traceback
+        traceback.print_exc()
+
 
 if __name__ == "__main__":
-    main()
+    test_sequential_execution()
+

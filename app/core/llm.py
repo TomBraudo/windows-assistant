@@ -7,6 +7,8 @@ import os
 from dotenv import load_dotenv
 from litellm import completion
 
+from .logging_utils import get_logger
+
 # Load environment variables
 load_dotenv()
 
@@ -25,6 +27,7 @@ class LLMClient:
             model: Model identifier in LiteLLM format (e.g., "groq/llama-3.3-70b-versatile")
         """
         self.model = model
+        self.logger = get_logger("llm", "llm.log")
         self._verify_connection()
     
     def _verify_connection(self):
@@ -35,12 +38,15 @@ class LLMClient:
         # Check for required API keys
         if provider == "groq":
             if not os.getenv("GROQ_API_KEY"):
+                self.logger.error("GROQ_API_KEY not found in environment variables")
                 raise ValueError("GROQ_API_KEY not found in environment variables")
         elif provider == "gemini":
             if not os.getenv("GOOGLE_API_KEY"):
+                self.logger.error("GOOGLE_API_KEY not found in environment variables")
                 raise ValueError("GOOGLE_API_KEY not found in environment variables")
         elif provider == "deepseek":
             if not os.getenv("DEEPSEEK_API_KEY"):
+                self.logger.error("DEEPSEEK_API_KEY not found in environment variables")
                 raise ValueError("DEEPSEEK_API_KEY not found in environment variables")
         elif provider == "openrouter":
             # LiteLLM expects OPENROUTER_API_KEY; allow mapping from X_AI_GROK_API_KEY
@@ -49,6 +55,9 @@ class LLMClient:
                 if grok_key:
                     os.environ["OPENROUTER_API_KEY"] = grok_key
                 else:
+                    self.logger.error(
+                        "OPENROUTER_API_KEY or X_AI_GROK_API_KEY not found in environment variables"
+                    )
                     raise ValueError(
                         "OPENROUTER_API_KEY or X_AI_GROK_API_KEY not found in environment variables"
                     )
@@ -65,13 +74,20 @@ class LLMClient:
             The completion response from LiteLLM
         """
         try:
+            self.logger.info(
+                "LLM completion start | model=%s | messages=%d",
+                self.model,
+                len(messages),
+            )
             response = completion(
                 model=self.model,
                 messages=messages,
                 **kwargs
             )
+            self.logger.info("LLM completion success")
             return response
         except Exception as e:
+            self.logger.error("LLM completion failed: %s", e)
             raise ConnectionError(f"LLM API call failed: {e}")
     
     def get_response_text(self, messages: list, **kwargs) -> str:

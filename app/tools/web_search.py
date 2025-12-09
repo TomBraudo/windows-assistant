@@ -6,7 +6,7 @@ Assumes SERPAPI_API_KEY is defined in the environment (e.g. via .env).
 
 import os
 import requests
-from typing import List
+from typing import List, Union
 from dotenv import load_dotenv
 
 
@@ -15,7 +15,7 @@ load_dotenv()
 SERPAPI_ENDPOINT = "https://serpapi.com/search"
 
 
-def web_search(query: str, max_results: int = 5) -> str:
+def web_search(query: str, max_results: Union[int, str] = 5) -> str:
     """
     Performs a web search using SerpAPI and returns a concise, readable summary
     of the top results for the agent to use in its reply.

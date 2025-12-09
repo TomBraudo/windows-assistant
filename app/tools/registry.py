@@ -9,6 +9,8 @@ import inspect
 from typing import Dict, Callable, Any, Optional
 from dotenv import load_dotenv
 
+from app.core.logging_utils import get_logger
+
 # Load environment variables
 load_dotenv()
 
@@ -33,6 +35,7 @@ class ToolRegistry:
         self.safe_mode = safe_mode
         self._tools: Dict[str, Dict[str, Any]] = {}
         self._sensitive_tools: set = set()
+        self.logger = get_logger("tools", "tools.log")
     
     def register(self, name: str, function: Callable, description: str, sensitive: bool = False):
         """Register a tool and auto-generate its JSON schema."""
@@ -106,9 +109,13 @@ class ToolRegistry:
                 )
         
         # Execute the tool
+        self.logger.info("Executing tool '%s' with args=%s kwargs=%s", tool_name, args, kwargs)
         try:
-            return tool_info["function"](*args, **kwargs)
+            result = tool_info["function"](*args, **kwargs)
+            self.logger.info("Tool '%s' completed successfully", tool_name)
+            return result
         except Exception as e:
+            self.logger.exception("Tool '%s' execution failed: %s", tool_name, e)
             raise RuntimeError(f"Tool '{tool_name}' execution failed: {e}")
     
     def _request_confirmation(self, tool_name: str, description: str) -> bool:
