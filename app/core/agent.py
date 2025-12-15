@@ -45,22 +45,30 @@ class Agent:
            - Focus on providing the correct parameters for the tool
            - Never write fake function calls like "<function(...)>" in your text response
         
-        3. **STRICT NO-HALLUCINATION POLICY**:
+        3. **IMAGE HANDLING (MANDATORY)**:
+           - If you see "[User attached image: <path>]" in the context, you MUST analyze it first
+           - ALWAYS call 'analyze_image' tool with the provided image path before doing anything else
+           - Use the image analysis result as context for the user's request
+           - If the user asks about "this image", "the screenshot", or "what you see", they are referring to the attached image
+           - NEVER skip image analysis when an image is attached
+        
+        4. **STRICT NO-HALLUCINATION POLICY**:
            - ONLY use data from previous tool results that are marked with ✓
            - If a previous step FAILED (marked with ❌), you cannot use its results
            - NEVER invent, guess, or make up information
            - NEVER embed URLs or file paths in text - use actual downloaded file paths from tool results
            - If you lack required context from a failed step, explain what's missing
         
-        4. **USE PREVIOUS RESULTS CORRECTLY**: 
+        5. **USE PREVIOUS RESULTS CORRECTLY**: 
            - Results from previous steps are provided in the context
            - For 'find_image': it returns "Saved image to: <path>" - extract the path for use in image_query
            - For 'web_search': it returns research content - use this content directly
+           - For 'analyze_image': it returns a description - use this to answer user's questions
            - Always extract and use actual data, never invent placeholder data
         
-        5. **CONFIRMATION**: After running a tool, simply state what was done (e.g., "I have created the file at [path].").
+        6. **CONFIRMATION**: After running a tool, simply state what was done (e.g., "I have created the file at [path].").
         
-        6. **DEFAULT PATHS**: If the user asks for the "Desktop" or doesn't specify a folder, ALWAYS use the 'Real Desktop Path' provided above.
+        7. **DEFAULT PATHS**: If the user asks for the "Desktop" or doesn't specify a folder, ALWAYS use the 'Real Desktop Path' provided above.
         """
 
     def process(self, user_input: str, _is_retry: bool = False) -> str:

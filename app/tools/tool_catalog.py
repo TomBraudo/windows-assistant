@@ -75,6 +75,28 @@ TOOL_CATALOG: List[Dict[str, str]] = [
         "name": "create_presentation",
         "description": "Create and open a PowerPoint (.pptx) file with a title, bullet points, and optional image. Use 'path' parameter for the file (e.g., 'My_Presentation.pptx' saves to Desktop, or provide full path).",
     },
+    
+    # Vision & Screen Analysis
+    {
+        "name": "capture_screenshot",
+        "description": "Capture a screenshot of the entire screen and save it to disk.",
+    },
+    {
+        "name": "analyze_image",
+        "description": "Analyze an image file using AI vision. Provide image_path and a question about the image.",
+    },
+    {
+        "name": "analyze_screenshot",
+        "description": "Capture a screenshot and analyze it in one step. Ask questions about what's on screen.",
+    },
+    {
+        "name": "find_ui_element",
+        "description": "Find a UI element on the screen by description (e.g., 'Save button', 'Search box').",
+    },
+    {
+        "name": "describe_screen",
+        "description": "Get a general description of what's currently displayed on the screen.",
+    },
 ]
 
 

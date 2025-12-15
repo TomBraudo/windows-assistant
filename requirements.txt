@@ -4,3 +4,8 @@ pycaw
 python-dotenv
 python-docx
 python-pptx
+customtkinter
+requests
+pywin32
+pillow
+google-genai
