@@ -94,29 +94,9 @@ class SettingsPanel(ctk.CTkFrame):
         )
         self.gemini_entry.grid(row=5, column=1, padx=10, pady=5, sticky="ew")
         
-        # Agent Settings section
-        agent_section = ctk.CTkLabel(
-            self,
-            text="🛡️ Agent Settings",
-            font=("Segoe UI", 14, "bold")
-        )
-        agent_section.grid(row=6, column=0, columnspan=2, padx=10, pady=(20, 5), sticky="w")
-        
-        # Safe Mode toggle
-        safemode_label = ctk.CTkLabel(self, text="Safe Mode:", font=("Segoe UI", 11))
-        safemode_label.grid(row=7, column=0, padx=10, pady=5, sticky="w")
-        
-        self.safemode_switch = ctk.CTkSwitch(
-            self,
-            text="Require confirmation for sensitive operations",
-            font=("Segoe UI", 11)
-        )
-        self.safemode_switch.grid(row=7, column=1, padx=10, pady=5, sticky="w")
-        self.safemode_switch.select()  # Default on
-        
         # Buttons
         button_frame = ctk.CTkFrame(self, fg_color="transparent")
-        button_frame.grid(row=8, column=0, columnspan=2, padx=10, pady=20, sticky="ew")
+        button_frame.grid(row=6, column=0, columnspan=2, padx=10, pady=20, sticky="ew")
         
         self.save_button = ctk.CTkButton(
             button_frame,
@@ -146,7 +126,7 @@ class SettingsPanel(ctk.CTkFrame):
             text="",
             font=("Segoe UI", 10)
         )
-        self.status_label.grid(row=9, column=0, columnspan=2, padx=10, pady=5, sticky="w")
+        self.status_label.grid(row=7, column=0, columnspan=2, padx=10, pady=5, sticky="w")
         
         # Load existing settings
         self.load_settings()
@@ -159,7 +139,6 @@ class SettingsPanel(ctk.CTkFrame):
         openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
         serpapi_key = os.getenv("SERPAPI_API_KEY", "")
         gemini_key = os.getenv("GEMINI_API_KEY", "")
-        safe_mode = os.getenv("SAFE_MODE", "True").lower() == "true"
         
         self.groq_entry.delete(0, "end")
         self.groq_entry.insert(0, groq_key)
@@ -173,11 +152,6 @@ class SettingsPanel(ctk.CTkFrame):
         self.gemini_entry.delete(0, "end")
         self.gemini_entry.insert(0, gemini_key)
         
-        if safe_mode:
-            self.safemode_switch.select()
-        else:
-            self.safemode_switch.deselect()
-        
         self.status_label.configure(text="Settings loaded from .env")
     
     def _on_save_clicked(self):
@@ -186,7 +160,6 @@ class SettingsPanel(ctk.CTkFrame):
         openrouter_key = self.openrouter_entry.get().strip()
         serpapi_key = self.serpapi_entry.get().strip()
         gemini_key = self.gemini_entry.get().strip()
-        safe_mode = "True" if self.safemode_switch.get() else "False"
         
         # Create .env if it doesn't exist
         if not os.path.exists(self.env_path):
@@ -202,8 +175,6 @@ class SettingsPanel(ctk.CTkFrame):
             set_key(self.env_path, "SERPAPI_API_KEY", serpapi_key)
         if gemini_key:
             set_key(self.env_path, "GEMINI_API_KEY", gemini_key)
-        
-        set_key(self.env_path, "SAFE_MODE", safe_mode)
         
         # Reload environment
         load_dotenv(override=True)

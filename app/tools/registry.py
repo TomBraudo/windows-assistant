@@ -1,5 +1,5 @@
 """
-Tool Registry - The "Safe Mode" Manager.
+Tool Registry - Tool Management System.
 Implements an allow-list protocol to prevent arbitrary code execution.
 Only registered tools can be executed by the agent.
 """
@@ -17,36 +17,22 @@ load_dotenv()
 
 class ToolRegistry:
     """
-    Registry that manages allowed tools and enforces safe mode restrictions.
+    Registry that manages allowed tools.
     Implements the allow-list protocol to prevent arbitrary code execution.
     """
     
-    def __init__(self, safe_mode: Optional[bool] = None):
-        """
-        Initialize the tool registry.
-        
-        Args:
-            safe_mode: Whether to require confirmation for sensitive operations.
-                      If None, reads from SAFE_MODE environment variable.
-        """
-        if safe_mode is None:
-            safe_mode = os.getenv("SAFE_MODE", "True").lower() == "true"
-        
-        self.safe_mode = safe_mode
+    def __init__(self):
+        """Initialize the tool registry."""
         self._tools: Dict[str, Dict[str, Any]] = {}
-        self._sensitive_tools: set = set()
         self.logger = get_logger("tools", "tools.log")
     
-    def register(self, name: str, function: Callable, description: str, sensitive: bool = False):
+    def register(self, name: str, function: Callable, description: str):
         """Register a tool and auto-generate its JSON schema."""
-        # 1. Store the function
+        # Store the function
         self._tools[name] = {
             "function": function,
-            "description": description,
-            "sensitive": sensitive
+            "description": description
         }
-        if sensitive:
-            self._sensitive_tools.add(name)
     
     def is_registered(self, tool_name: str) -> bool:
         """
@@ -79,7 +65,7 @@ class ToolRegistry:
         **kwargs
     ) -> Any:
         """
-        Execute a registered tool with safety checks.
+        Execute a registered tool.
         
         Args:
             tool_name: Name of the tool to execute
@@ -91,7 +77,6 @@ class ToolRegistry:
         
         Raises:
             ValueError: If tool is not registered
-            PermissionError: If safe mode blocks execution
         """
         if not self.is_registered(tool_name):
             raise ValueError(
@@ -100,13 +85,6 @@ class ToolRegistry:
             )
         
         tool_info = self._tools[tool_name]
-        
-        # Check if confirmation is needed
-        if self.safe_mode and tool_info["sensitive"]:
-            if not self._request_confirmation(tool_name, tool_info["description"]):
-                raise PermissionError(
-                    f"Execution of '{tool_name}' was denied by user."
-                )
         
         # Execute the tool
         self.logger.info("Executing tool '%s' with args=%s kwargs=%s", tool_name, args, kwargs)
@@ -117,23 +95,6 @@ class ToolRegistry:
         except Exception as e:
             self.logger.exception("Tool '%s' execution failed: %s", tool_name, e)
             raise RuntimeError(f"Tool '{tool_name}' execution failed: {e}")
-    
-    def _request_confirmation(self, tool_name: str, description: str) -> bool:
-        """
-        Request user confirmation for sensitive operations.
-        
-        Args:
-            tool_name: Name of the tool
-            description: Description of what the tool does
-        
-        Returns:
-            True if user confirms, False otherwise
-        """
-        print(f"\n⚠️  SAFE MODE: Sensitive operation detected")
-        print(f"Tool: {tool_name}")
-        print(f"Description: {description}")
-        response = input("Proceed? (Y/N): ").strip().upper()
-        return response == "Y"
     
     def list_tools(self) -> Dict[str, str]:
         """
