@@ -1,0 +1,238 @@
+╔══════════════════════════════════════════════════════════════╗
+║           WINDOWS AGENT - TWO MODES QUICK GUIDE             ║
+╚══════════════════════════════════════════════════════════════╝
+
+Your agent now has TWO distinct operating modes:
+
+
+┌──────────────────────────────────────────────────────────────┐
+│  💬 ASK MODE (Default)                                       │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  What it does:                                               │
+│  • Uses standard tools (web search, file ops, docs)          │
+│  • NO mouse or keyboard control                              │
+│  • Fast and predictable                                      │
+│                                                              │
+│  Best for:                                                   │
+│  ✓ Web searches and research                                 │
+│  ✓ Creating documents/presentations                          │
+│  ✓ File operations                                           │
+│  ✓ System controls (volume, etc.)                            │
+│  ✓ Analyzing images/screenshots                              │
+│                                                              │
+│  Examples:                                                   │
+│  • "Search for Python tutorials"                             │
+│  • "Create a presentation about AI"                          │
+│  • "Find files named test.py"                                │
+│  • "Set volume to 50"                                        │
+│                                                              │
+│  Speed: ⚡⚡⚡ Fast (2-5 seconds)                              │
+│  Cost:  💰 Free (uses free-tier APIs)                        │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────┐
+│  🤖 AGENT MODE                                               │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  What it does:                                               │
+│  • Autonomous computer control with vision                   │
+│  • FULL mouse and keyboard control                           │
+│  • Sees screen and iterates until complete                   │
+│                                                              │
+│  Best for:                                                   │
+│  ✓ Browser interaction and navigation                        │
+│  ✓ Clicking buttons and filling forms                        │
+│  ✓ GUI application control                                   │
+│  ✓ Complex multi-step interactions                           │
+│  ✓ Tasks requiring screen observation                        │
+│                                                              │
+│  Examples:                                                   │
+│  • "Open Chrome and search for 'randalone'"                  │
+│  • "Navigate to github.com"                                  │
+│  • "Fill out the contact form"                               │
+│  • "Click the Submit button"                                 │
+│                                                              │
+│  Speed: 🐢 Slower (15-30 seconds)                            │
+│  Cost:  💰💰 ~$0.025 per task (Gemini Vision)                │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════
+HOW TO SWITCH MODES
+═══════════════════════════════════════════════════════════════
+
+📱 IN GUI:
+----------
+1. Look above the text input box
+2. You'll see: [Ask] | [Agent]
+3. Click the mode you want
+4. Description updates to confirm
+5. Type your message and send
+
+Current mode is shown in the description:
+  💬 Ask Mode: Use tools and web search...
+  🤖 Agent Mode: Autonomous computer control...
+
+
+💻 IN CLI:
+----------
+Type these commands:
+  /ask    → Switch to Ask Mode
+  /agent  → Switch to Agent Mode
+
+Your prompt shows current mode:
+  💬 You [ASK]: your message
+  🤖 You [AGENT]: your message
+
+
+═══════════════════════════════════════════════════════════════
+QUICK DECISION TREE
+═══════════════════════════════════════════════════════════════
+
+Do you need to CLICK, TYPE, or NAVIGATE in a GUI?
+  ├─ YES → Use 🤖 AGENT MODE
+  └─ NO  → Use 💬 ASK MODE
+
+
+═══════════════════════════════════════════════════════════════
+COMPARISON TABLE
+═══════════════════════════════════════════════════════════════
+
+Feature              │  Ask Mode  │  Agent Mode
+─────────────────────┼────────────┼─────────────
+Web Search           │     ✅     │      ❌
+Mouse Control        │     ❌     │      ✅
+Keyboard Control     │     ❌     │      ✅
+Create Documents     │     ✅     │      ❌
+File Operations      │     ✅     │      ❌
+Browser Navigation   │     ❌     │      ✅
+Form Filling         │     ❌     │      ✅
+Speed                │   Fast     │    Slower
+Vision Feedback      │  Analysis  │  Continuous
+Max Duration         │  ~5 sec    │  ~30 sec
+
+
+═══════════════════════════════════════════════════════════════
+EXAMPLE: SAME TASK, DIFFERENT MODES
+═══════════════════════════════════════════════════════════════
+
+Task: "Search for latest video from randalone"
+
+💬 ASK MODE:
+------------
+What happens:
+  Step 1: web_search("latest video from randalone")
+  → Returns web search results in text
+
+Result: "Based on web search results, the latest video is..."
+Time: 2 seconds
+Best when: You just need the information
+
+🤖 AGENT MODE:
+--------------
+What happens:
+  Iteration 1: See desktop
+  Iteration 2: Click Chrome icon
+  Iteration 3: Click address bar
+  Iteration 4: Type "youtube.com/randalone"
+  Iteration 5: Press Enter
+  Iteration 6: See YouTube page with videos
+
+Result: Browser open with actual channel visible
+Time: 20 seconds
+Best when: You want to actually navigate to the page
+
+
+═══════════════════════════════════════════════════════════════
+COMMON MISTAKES TO AVOID
+═══════════════════════════════════════════════════════════════
+
+❌ DON'T use Agent Mode for simple info queries
+   "What's the weather?" → Use ASK MODE
+
+❌ DON'T use Ask Mode for GUI interactions
+   "Click the button" → Use AGENT MODE
+
+❌ DON'T be vague in Agent Mode
+   Bad:  "Click the button"
+   Good: "Click the Submit button in bottom-right"
+
+✅ DO switch modes freely based on task
+
+✅ DO start with Ask Mode by default
+
+✅ DO watch the screen in Agent Mode to see what's happening
+
+
+═══════════════════════════════════════════════════════════════
+SAFETY & EMERGENCY
+═══════════════════════════════════════════════════════════════
+
+🛑 EMERGENCY STOP (Agent Mode):
+
+Option 1: Move mouse to TOP-LEFT corner (PyAutoGUI failsafe)
+Option 2: Press Ctrl+C in terminal
+
+🔒 SAFETY FEATURES:
+
+• Rate limit: 30 actions per minute
+• Coordinate validation: All clicks checked
+• Max iterations: 20 per task (prevents infinite loops)
+• Vision verification: Agent sees result after each action
+
+
+═══════════════════════════════════════════════════════════════
+GETTING STARTED
+═══════════════════════════════════════════════════════════════
+
+1. Run the GUI:
+   python main_gui.py
+
+2. Start with ASK MODE (default)
+
+3. Try a simple command:
+   "Search for Python tutorials"
+
+4. Switch to AGENT MODE
+
+5. Try a GUI command:
+   "Click the Start button"
+
+6. Watch your screen as the agent takes control!
+
+
+═══════════════════════════════════════════════════════════════
+TIPS FOR SUCCESS
+═══════════════════════════════════════════════════════════════
+
+💡 Use Ask Mode 80% of the time
+   It's faster and covers most use cases
+
+💡 Switch to Agent Mode only when needed
+   Browser navigation, form filling, GUI tasks
+
+💡 Be specific in Agent Mode descriptions
+   Include position: "top-right", "bottom", etc.
+
+💡 Combine both modes in complex workflows
+   Ask Mode → gather info
+   Agent Mode → act on it
+
+💡 Watch the screen in Agent Mode
+   It's cool to see the automation happen!
+
+
+═══════════════════════════════════════════════════════════════
+MORE INFORMATION
+═══════════════════════════════════════════════════════════════
+
+Detailed guide:         MODE_GUIDE.md
+Computer control docs:  COMPUTER_CONTROL_GUIDE.md
+Quick start:            QUICKSTART_COMPUTER_CONTROL.txt
+
+═══════════════════════════════════════════════════════════════
+

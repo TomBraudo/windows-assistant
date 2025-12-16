@@ -3,6 +3,7 @@ from app.tools import os_ops
 from app.tools.web_search import web_search
 from app.tools.image_tools import find_image
 from app.tools.ppt_tools import create_presentation
+from app.tools import computer_control
 from app.tools.tool_catalog import get_tool_description
 from app.core.agent import Agent
 import os
@@ -36,6 +37,17 @@ def main():
     
     # Document Creation
     registry.register("create_presentation", create_presentation, get_tool_description("create_presentation"), sensitive=True)
+    
+    # Computer Control (Mouse & Keyboard)
+    registry.register("click_at_coordinates", computer_control.click_at_coordinates, get_tool_description("click_at_coordinates"), sensitive=True)
+    registry.register("click_element", computer_control.click_element, get_tool_description("click_element"), sensitive=True)
+    registry.register("type_text", computer_control.type_text, get_tool_description("type_text"), sensitive=True)
+    registry.register("press_key", computer_control.press_key, get_tool_description("press_key"), sensitive=False)
+    registry.register("hotkey", computer_control.hotkey, get_tool_description("hotkey"), sensitive=True)
+    registry.register("scroll", computer_control.scroll, get_tool_description("scroll"), sensitive=False)
+    registry.register("move_mouse", computer_control.move_mouse, get_tool_description("move_mouse"), sensitive=False)
+    registry.register("get_mouse_position", computer_control.get_mouse_position, get_tool_description("get_mouse_position"), sensitive=False)
+    registry.register("drag_to", computer_control.drag_to, get_tool_description("drag_to"), sensitive=True)
 
     # 2. Setup the "Brain" (Agent)
     agent = Agent(registry=registry)

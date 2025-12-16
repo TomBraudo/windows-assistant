@@ -1,0 +1,9 @@
+# Test output files
+test_output/
+*.png
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+

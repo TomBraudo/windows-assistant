@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from .llm import LLMClient
 from .refiner_agent import PromptRefiner
 from .judge_agent import ResponseJudge
+from .autonomous_mode import AutonomousComputerAgent
 from .logging_utils import get_logger
 from app.tools.registry import ToolRegistry
 from app.tools.os_ops import get_desktop_path  # <--- Import the helper
@@ -18,6 +19,8 @@ class Agent:
         self.refiner = PromptRefiner()
         # Judge LLM (OpenRouter Grok) used after a full pass to detect hallucinations
         self.judge = ResponseJudge()
+        # Autonomous computer control agent
+        self.autonomous_agent = AutonomousComputerAgent(registry, model)
         self.registry = registry
         self.history: List[Dict[str, Any]] = []
         self.logger = get_logger("agent", "agent.log")
@@ -71,11 +74,36 @@ class Agent:
         7. **DEFAULT PATHS**: If the user asks for the "Desktop" or doesn't specify a folder, ALWAYS use the 'Real Desktop Path' provided above.
         """
 
-    def process(self, user_input: str, _is_retry: bool = False) -> str:
+    def process(self, user_input: str, mode: str = "ask", _is_retry: bool = False) -> str:
         """Main loop: Listen -> Think -> Act -> Reply
+        
+        Args:
+            user_input: User's request
+            mode: Execution mode - "ask" (standard tools) or "agent" (computer control only)
+            _is_retry: Internal flag for retry logic
         
         New flow: Execute one tool per API call, sequentially following the execution plan.
         """
+        
+        # 0. Check execution mode
+        if mode == "agent":
+            # AGENT MODE: Use autonomous computer control with vision feedback
+            self.logger.info("AGENT MODE: Using autonomous computer control")
+            print("\n🤖 AGENT MODE: Autonomous computer control with vision feedback")
+            print("   The agent will see the screen and control mouse/keyboard iteratively.\n")
+            
+            try:
+                result = self.autonomous_agent.execute(user_input)
+                self.history.append({"role": "user", "content": user_input})
+                self.history.append({"role": "assistant", "content": result})
+                return result
+            except Exception as e:
+                error_msg = f"Autonomous mode failed: {str(e)}"
+                self.logger.error(error_msg)
+                return f"❌ {error_msg}"
+        
+        # ASK MODE: Use standard tools (no computer control)
+        self.logger.info("ASK MODE: Using standard tools (no computer control)")
         
         # 1. First, refine the raw user input into an execution plan
         try:

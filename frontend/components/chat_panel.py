@@ -21,6 +21,7 @@ class ChatPanel(ctk.CTkFrame):
         self.on_send = on_send
         self.attached_image_path = None  # Store attached image path
         self.image_preview_frame = None  # Preview frame reference
+        self.agent_mode = "ask"  # Default mode: "ask" or "agent"
         
         # Configure grid
         self.grid_rowconfigure(0, weight=1)  # Message area expands
@@ -36,6 +37,41 @@ class ChatPanel(ctk.CTkFrame):
             fg_color="#1A1A1A"
         )
         self.message_frame.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="nsew")
+        
+        # Mode selector frame (above input area)
+        self.mode_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.mode_frame.grid(row=1, column=0, padx=10, pady=(5, 0), sticky="w")
+        
+        mode_label = ctk.CTkLabel(
+            self.mode_frame,
+            text="Mode:",
+            font=("Segoe UI", 11, "bold")
+        )
+        mode_label.pack(side="left", padx=(5, 10))
+        
+        # Mode segmented button
+        self.mode_selector = ctk.CTkSegmentedButton(
+            self.mode_frame,
+            values=["Ask", "Agent"],
+            command=self._on_mode_changed,
+            font=("Segoe UI", 11),
+            fg_color="#2B2B2B",
+            selected_color="#1E88E5",
+            selected_hover_color="#1565C0",
+            unselected_color="#424242",
+            unselected_hover_color="#616161"
+        )
+        self.mode_selector.set("Ask")  # Default
+        self.mode_selector.pack(side="left", padx=5)
+        
+        # Mode description
+        self.mode_description = ctk.CTkLabel(
+            self.mode_frame,
+            text="💬 Ask Mode: Use tools and web search (no mouse/keyboard control)",
+            font=("Segoe UI", 9),
+            text_color="#B0B0B0"
+        )
+        self.mode_description.pack(side="left", padx=15)
         
         # Input area
         self.input_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -90,6 +126,23 @@ class ChatPanel(ctk.CTkFrame):
             text_color="#4CAF50"
         )
         self.status_label.grid(row=1, column=0, columnspan=2, sticky="w", padx=5, pady=(0, 5))
+    
+    def _on_mode_changed(self, value: str):
+        """Handle mode selection change."""
+        self.agent_mode = value.lower()  # "ask" or "agent"
+        
+        if self.agent_mode == "ask":
+            self.mode_description.configure(
+                text="💬 Ask Mode: Use tools and web search (no mouse/keyboard control)"
+            )
+        else:  # agent mode
+            self.mode_description.configure(
+                text="🤖 Agent Mode: Autonomous computer control with vision (mouse/keyboard control)"
+            )
+    
+    def get_mode(self) -> str:
+        """Get current agent mode."""
+        return self.agent_mode
     
     def _on_attach_clicked(self):
         """Handle attach button click - open file dialog for image."""
@@ -206,10 +259,11 @@ class ChatPanel(ctk.CTkFrame):
         """Handle send button click."""
         message = self.input_box.get("1.0", "end-1c").strip()
         if (message or self.attached_image_path) and self.on_send:
-            # Create message dict with text and optional image
+            # Create message dict with text, optional image, and mode
             message_data = {
                 "text": message,
-                "image_path": self.attached_image_path
+                "image_path": self.attached_image_path,
+                "mode": self.agent_mode  # Include current mode
             }
             
             # Clear the input box, attached image, and preview immediately

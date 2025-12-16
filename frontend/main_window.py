@@ -69,6 +69,7 @@ class MainWindow(ctk.CTk):
         """Handle user sending a message (with optional image)."""
         text = message_data.get("text", "")
         image_path = message_data.get("image_path")
+        mode = message_data.get("mode", "ask")  # Get mode from message data
         
         # Display user message with image if provided
         display_text = text if text else "[Image only]"
@@ -76,12 +77,18 @@ class MainWindow(ctk.CTk):
         
         # Disable input while processing
         self.chat_panel.set_input_enabled(False)
-        self.chat_panel.set_status("Agent is thinking...")
         
-        # Process in background (pass both text and image)
+        # Set appropriate status based on mode
+        if mode == "agent":
+            self.chat_panel.set_status("🤖 Agent Mode: Using vision-guided computer control...")
+        else:
+            self.chat_panel.set_status("💬 Agent is thinking...")
+        
+        # Process in background (pass text, image, and mode)
         self.controller.process_async(
             user_input=text,
             image_path=image_path,
+            mode=mode,
             callback=self._on_agent_response
         )
     

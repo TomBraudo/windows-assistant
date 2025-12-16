@@ -97,6 +97,44 @@ TOOL_CATALOG: List[Dict[str, str]] = [
         "name": "describe_screen",
         "description": "Get a general description of what's currently displayed on the screen.",
     },
+    
+    # Computer Control (Mouse & Keyboard)
+    {
+        "name": "click_at_coordinates",
+        "description": "Click at specific screen coordinates (x, y). Use for precise clicking when coordinates are known.",
+    },
+    {
+        "name": "click_element",
+        "description": "Vision-guided click: Find and click a UI element by description (e.g., 'Submit button', 'Chrome icon'). The agent will use vision to locate it.",
+    },
+    {
+        "name": "type_text",
+        "description": "Type text using keyboard simulation. Can optionally press Enter after typing.",
+    },
+    {
+        "name": "press_key",
+        "description": "Press a single keyboard key (e.g., 'enter', 'tab', 'esc', 'backspace', 'delete', arrow keys).",
+    },
+    {
+        "name": "hotkey",
+        "description": "Press keyboard shortcuts (e.g., Ctrl+C, Alt+Tab, Win+D). Provide keys as separate arguments.",
+    },
+    {
+        "name": "scroll",
+        "description": "Scroll the mouse wheel up or down by a specified number of clicks.",
+    },
+    {
+        "name": "move_mouse",
+        "description": "Move the mouse cursor to specific coordinates without clicking.",
+    },
+    {
+        "name": "get_mouse_position",
+        "description": "Get the current mouse cursor position (x, y coordinates).",
+    },
+    {
+        "name": "drag_to",
+        "description": "Click and drag from current mouse position to target coordinates. Useful for moving windows, selecting text, etc.",
+    },
 ]
 
 

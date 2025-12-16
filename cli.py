@@ -10,6 +10,7 @@ from app.tools.web_search import web_search
 from app.tools.image_tools import find_image
 from app.tools.ppt_tools import create_presentation
 from app.tools import vision_tools
+from app.tools import computer_control
 from app.tools.tool_catalog import get_tool_description
 from app.core.agent import Agent
 import os
@@ -50,21 +51,53 @@ def main():
     registry.register("analyze_screenshot", vision_tools.analyze_screenshot, get_tool_description("analyze_screenshot"))
     registry.register("find_ui_element", vision_tools.find_ui_element, get_tool_description("find_ui_element"))
     registry.register("describe_screen", vision_tools.describe_screen, get_tool_description("describe_screen"))
+    
+    # Computer Control (Mouse & Keyboard)
+    registry.register("click_at_coordinates", computer_control.click_at_coordinates, get_tool_description("click_at_coordinates"))
+    registry.register("click_element", computer_control.click_element, get_tool_description("click_element"))
+    registry.register("type_text", computer_control.type_text, get_tool_description("type_text"))
+    registry.register("press_key", computer_control.press_key, get_tool_description("press_key"))
+    registry.register("hotkey", computer_control.hotkey, get_tool_description("hotkey"))
+    registry.register("scroll", computer_control.scroll, get_tool_description("scroll"))
+    registry.register("move_mouse", computer_control.move_mouse, get_tool_description("move_mouse"))
+    registry.register("get_mouse_position", computer_control.get_mouse_position, get_tool_description("get_mouse_position"))
+    registry.register("drag_to", computer_control.drag_to, get_tool_description("drag_to"))
 
     # 2. Setup the "Brain" (Agent)
     agent = Agent(registry=registry)
     
     print("🤖 Windows Agent Online (CLI Mode). Type 'quit' to exit.")
-    print("---------------------------------------------")
+    print("=" * 60)
+    print("\n📋 MODES:")
+    print("  💬 Ask Mode (default): Use standard tools and web search")
+    print("  🤖 Agent Mode: Autonomous computer control with vision")
+    print("\nTo switch modes, type:")
+    print("  /ask  - Switch to Ask Mode")
+    print("  /agent - Switch to Agent Mode")
+    print("=" * 60)
+    
+    current_mode = "ask"  # Default mode
 
     while True:
         try:
-            user_input = input("\nYou: ").strip()
+            mode_indicator = "💬" if current_mode == "ask" else "🤖"
+            user_input = input(f"\n{mode_indicator} You [{current_mode.upper()}]: ").strip()
+            
             if user_input.lower() in ["quit", "exit"]:
                 break
             
-            response = agent.process(user_input)
-            print(f"Agent: {response}")
+            # Check for mode switch commands
+            if user_input.lower() == "/ask":
+                current_mode = "ask"
+                print("Switched to 💬 Ask Mode (standard tools, no computer control)")
+                continue
+            elif user_input.lower() == "/agent":
+                current_mode = "agent"
+                print("Switched to 🤖 Agent Mode (autonomous computer control with vision)")
+                continue
+            
+            response = agent.process(user_input, mode=current_mode)
+            print(f"\nAgent: {response}")
             
         except KeyboardInterrupt:
             break

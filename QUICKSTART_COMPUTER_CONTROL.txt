@@ -1,0 +1,281 @@
+╔═══════════════════════════════════════════════════════════════╗
+║     COMPUTER CONTROL - QUICK START GUIDE                      ║
+║     Autonomous GUI Control for Windows Agent                  ║
+╚═══════════════════════════════════════════════════════════════╝
+
+🎯 WHAT IS THIS?
+================
+Your Windows Agent can now SEE your screen and CONTROL your mouse/keyboard!
+
+- Click buttons by description (e.g., "Click the Save button")
+- Type text into any application
+- Navigate using keyboard shortcuts
+- Fully autonomous GUI interaction
+
+
+🔑 SETUP (2 MINUTES)
+====================
+
+1. Install PyAutoGUI:
+   
+   pip install -r requirements.txt
+
+2. Add Gemini API Key to .env file:
+   
+   GEMINI_API_KEY=your_key_here
+   
+   Get free key: https://aistudio.google.com/app/apikey
+
+3. Run the agent:
+   
+   python cli.py          # CLI mode
+   python main_gui.py     # GUI mode
+
+Done! ✓
+
+
+🚀 TRY IT NOW
+=============
+
+Start simple:
+
+1. "Get my mouse position"
+   → Returns current cursor coordinates
+
+2. "Click the Start button"
+   → Uses vision to find and click
+
+3. "Type 'Hello World' and press Enter"
+   → Types text into focused window
+
+4. "Describe what's on my screen"
+   → Takes screenshot and analyzes it
+
+
+💡 EXAMPLE COMMANDS
+===================
+
+BASIC:
+------
+"Move mouse to position 500, 300"
+"Click at coordinates 800, 600"
+"Press the Enter key"
+"Scroll down 5 clicks"
+
+VISION-GUIDED:
+--------------
+"Click the Chrome icon"
+"Click the Submit button in the form"
+"Click the X button to close this window"
+"Find and click the Settings icon"
+
+KEYBOARD:
+---------
+"Type 'Hello World'"
+"Press Ctrl+C to copy"
+"Press Alt+Tab to switch windows"
+"Press Win+D to show desktop"
+
+COMPLEX TASKS:
+--------------
+"Open Notepad, write 'Meeting notes', and save as notes.txt"
+
+"Click the search box, type 'Python tutorials', and press Enter"
+
+"Take a screenshot, analyze it, and tell me what applications are open"
+
+"Fill out the form: name is 'John Doe', email is 'john@example.com', 
+then click Submit"
+
+
+🧠 HOW IT WORKS
+===============
+
+Your agent uses 4 AI models working together:
+
+1. REFINER (Planning)
+   → Breaks your request into steps
+   → OpenRouter DeepSeek (Free)
+
+2. VISION (Screen Understanding)
+   → Analyzes screenshots to find UI elements
+   → Google Gemini 2.0 Flash (~$0.001 per action)
+
+3. EXECUTOR (Tool Execution)
+   → Performs each action (click, type, etc.)
+   → Groq Llama 3.1 70B (Fast & Free)
+
+4. JUDGE (Validation)
+   → Verifies actions weren't hallucinated
+   → OpenRouter DeepSeek (Free)
+
+Example execution:
+------------------
+You: "Click the Save button"
+
+Step 1: Refiner creates plan
+  → Tool: click_element
+  → Target: "Save button"
+
+Step 2: Vision finds it
+  → Captures screenshot
+  → Gemini: "Save button is at coordinates (850, 600)"
+
+Step 3: Executor clicks
+  → Moves mouse to (850, 600)
+  → Performs click
+
+Step 4: Judge validates
+  → Confirms action was executed
+  → Returns success
+
+Agent: "✓ Found and clicked 'Save button' at (850, 600)"
+
+
+🔒 SAFETY FEATURES
+==================
+
+1. FAILSAFE: Move mouse to TOP-LEFT corner to abort (PyAutoGUI)
+
+2. RATE LIMIT: Max 30 actions per minute
+
+3. COORDINATE VALIDATION: All clicks verified within screen bounds
+
+4. SAFE MODE: Optional human confirmation (set SAFE_MODE=True in .env)
+
+
+⚠️  IMPORTANT TIPS
+==================
+
+✓ BE SPECIFIC with descriptions:
+  Good: "Click the blue Submit button in bottom-right"
+  Bad:  "Click the button"
+
+✓ ENSURE WINDOWS ARE VISIBLE:
+  Agent can only see/click what's on screen
+
+✓ START SIMPLE:
+  Test with basic commands before complex tasks
+
+✓ USE HOTKEYS when possible:
+  Faster: "Press Ctrl+S"
+  Slower: "Click File menu, then click Save"
+
+✓ VERIFY FIRST:
+  "Describe what's on screen" before clicking
+
+
+📊 AVAILABLE TOOLS (9 Computer Control Tools)
+==============================================
+
+MOUSE:
+------
+• click_element(description)       # Vision-guided (most powerful)
+• click_at_coordinates(x, y)       # Direct clicking
+• move_mouse(x, y)                 # Move without clicking
+• drag_to(x, y)                    # Click and drag
+• scroll(clicks, direction)        # Scroll wheel
+• get_mouse_position()             # Current position
+
+KEYBOARD:
+---------
+• type_text(text)                  # Type into focused app
+• press_key(key)                   # Single key press
+• hotkey(*keys)                    # Keyboard shortcuts
+
+
+🧪 TEST IT
+==========
+
+Run the test suite:
+
+python test_computer_control.py
+
+This will verify:
+- Mouse control works
+- Vision API is configured
+- Keyboard input functions
+- Screenshots can be captured
+
+
+💰 COST
+=======
+
+Extremely cheap with Gemini:
+- Vision-guided click: $0.00125
+- Direct actions: $0 (no API calls)
+- 100 complex automations/day: ~$2.50
+
+Your Gemini API includes generous free tier!
+
+
+🐛 TROUBLESHOOTING
+==================
+
+Issue: "GEMINI_API_KEY not configured"
+Fix: Add to .env file (get from aistudio.google.com)
+
+Issue: "Could not find element on screen"
+Fix: Be more specific in description, ensure window is visible
+
+Issue: Clicks wrong element
+Fix: Add position hints: "Save button in bottom-right corner"
+
+Issue: "Rate limit exceeded"
+Fix: Wait 60 seconds
+
+
+📚 FULL DOCUMENTATION
+=====================
+
+For complete guide, see: COMPUTER_CONTROL_GUIDE.md
+
+Topics covered:
+- Detailed execution flow
+- Advanced usage patterns
+- All tool parameters
+- Cost analysis
+- Model upgrade paths
+- Pro tips
+
+
+🎓 LEARNING PATH
+================
+
+1. Start with basic mouse commands:
+   "Get mouse position"
+   "Move mouse to 500, 500"
+
+2. Try vision-guided clicking:
+   "Click the Start button"
+   "Click the Chrome icon"
+
+3. Add keyboard control:
+   "Type 'Hello World'"
+   "Press Enter"
+
+4. Combine actions:
+   "Open Notepad and write a grocery list"
+
+5. Complex automation:
+   "Research Python tutorials and create a presentation"
+
+
+🚀 YOU'RE READY!
+================
+
+Your agent can now control your computer autonomously!
+
+Start the agent and try:
+
+python cli.py
+
+Then type: "Click the Start button"
+
+Watch the magic happen! ✨
+
+
+═══════════════════════════════════════════════════════════════
+Questions? Check COMPUTER_CONTROL_GUIDE.md for detailed docs
+═══════════════════════════════════════════════════════════════
+

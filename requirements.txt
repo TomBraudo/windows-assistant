@@ -9,3 +9,5 @@ requests
 pywin32
 pillow
 google-genai
+pyautogui
+replicate

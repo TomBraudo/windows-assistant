@@ -33,6 +33,7 @@ class AgentController:
         self, 
         user_input: str, 
         image_path: Optional[str] = None,
+        mode: str = "ask",
         callback: Optional[Callable[[str, str], None]] = None
     ):
         """
@@ -41,6 +42,7 @@ class AgentController:
         Args:
             user_input: The user's message/command
             image_path: Optional path to an image to analyze
+            mode: Execution mode - "ask" (standard tools) or "agent" (computer control only)
             callback: Optional callback(status, message) for UI updates
                      status can be: "processing", "complete", "error"
         """
@@ -59,7 +61,8 @@ class AgentController:
                 
                 try:
                     if callback:
-                        callback("processing", "Agent is thinking...")
+                        status_msg = "Agent Mode: Using vision feedback..." if mode == "agent" else "Agent is thinking..."
+                        callback("processing", status_msg)
                     
                     # If image is provided, ADD IT TO CONTEXT
                     if image_path:
@@ -69,10 +72,10 @@ class AgentController:
                         else:
                             combined_input = f"[User attached image: {image_path}]\n\nUser request: Analyze and describe this image in detail."
                         
-                        response = self.agent.process(combined_input)
+                        response = self.agent.process(combined_input, mode=mode)
                     else:
-                        # Execute agent normally
-                        response = self.agent.process(user_input)
+                        # Execute agent with specified mode
+                        response = self.agent.process(user_input, mode=mode)
                     
                     if callback:
                         callback("complete", response)
