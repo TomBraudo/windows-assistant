@@ -13,25 +13,40 @@ from PIL import ImageGrab, Image
 from datetime import datetime
 from google import genai
 from dotenv import load_dotenv
+from app.core.logging_utils import get_logger
 
 # Load environment variables
 load_dotenv()
 
+# Initialize logger
+logger = get_logger("vision_tools", "tools.log")
 
-def capture_screenshot(save_path: Optional[str] = None) -> str:
+
+def capture_screenshot(save_path: Optional[str] = None, primary_only: bool = True) -> str:
     """
-    Capture a screenshot of the entire screen.
+    Capture a screenshot of the screen.
     
     Args:
         save_path: Optional path to save the screenshot. If not provided,
                    saves to a temporary location in Desktop/screenshots.
+        primary_only: If True (default), captures only the primary monitor.
+                     If False, captures all monitors as one wide image.
     
     Returns:
         Path to the saved screenshot file.
     """
     try:
         # Capture screenshot
-        screenshot = ImageGrab.grab()
+        if primary_only:
+            # Capture only primary monitor (0, 0 to screen width/height)
+            import pyautogui
+            screen_width, screen_height = pyautogui.size()
+            screenshot = ImageGrab.grab(bbox=(0, 0, screen_width, screen_height))
+            logger.info(f"Captured primary monitor: {screen_width}x{screen_height}")
+        else:
+            # Capture all monitors
+            screenshot = ImageGrab.grab()
+            logger.info(f"Captured all monitors: {screenshot.width}x{screenshot.height}")
         
         # Determine save location
         if save_path is None:

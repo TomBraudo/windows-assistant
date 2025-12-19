@@ -2,7 +2,7 @@
 Computer control tools for autonomous GUI interaction.
 
 Uses vision-guided control:
-- Gemini 2.0 for screen understanding and coordinate detection
+- OmniParser (RunPod) for accurate UI element detection and coordinates
 - PyAutoGUI for mouse/keyboard control
 - Vision feedback loop for verification
 """
@@ -14,6 +14,7 @@ import ctypes
 import pyautogui
 from typing import Optional, Dict, Any, Tuple
 from .vision_tools import capture_screenshot, analyze_image
+from .omniparser_helper import get_omniparser, find_element_by_description
 from app.core.logging_utils import get_logger
 
 # ============================================================================
@@ -157,11 +158,12 @@ def click_at_coordinates(x: int, y: int, clicks: int = 1, button: str = "left") 
 
 def click_element(element_description: str, clicks: int = 1, button: str = "left") -> str:
     """
-    Vision-guided clicking: Find an element on screen and click it.
+    Vision-guided clicking: Find an element on screen and click it using OmniParser.
     
     Args:
         element_description: Natural language description of what to click
                            (e.g., "Save button", "Chrome icon", "Search box")
+                           Can also be a specific label ID from OmniParser (e.g., "icon 5")
         clicks: Number of clicks (1 for single, 2 for double)
         button: Mouse button ("left", "right", "middle")
     
@@ -172,7 +174,7 @@ def click_element(element_description: str, clicks: int = 1, button: str = "left
         return "❌ Rate limit exceeded. Wait before performing more actions."
     
     try:
-        logger.info("Vision-guided click requested for: %s", element_description)
+        logger.info("OmniParser-guided click requested for: %s", element_description)
         
         # Step 1: Capture current screen
         capture_result = capture_screenshot()
@@ -181,45 +183,23 @@ def click_element(element_description: str, clicks: int = 1, button: str = "left
         
         screenshot_path = capture_result.replace("Screenshot saved to:", "").strip()
         
-        # Step 2: Ask Gemini to find the element and return coordinates
-        prompt = f"""Find the {element_description} on this screen.
-
-Analyze the screen carefully and locate the element. Return ONLY a JSON object (no extra text) with:
-{{
-  "x": <pixel_x_coordinate>,
-  "y": <pixel_y_coordinate>,
-  "confidence": <0-100>,
-  "description": "<brief description of what you found>"
-}}
-
-If you cannot find it clearly, return:
-{{
-  "error": "not found",
-  "reason": "<why it couldn't be found>"
-}}
-
-Rules:
-- Coordinates must be the CENTER of the element
-- x is pixels from the LEFT edge of screen
-- y is pixels from the TOP edge of screen
-- confidence should reflect how certain you are
-- Return ONLY the JSON, no markdown, no extra text"""
+        # Step 2: Use OmniParser to find the element
+        try:
+            element = find_element_by_description(screenshot_path, element_description)
+        except Exception as e:
+            logger.error(f"OmniParser failed: {e}")
+            return f"❌ OmniParser error: {str(e)}\n\nMake sure RUNPOD_URL is set in .env file."
         
-        vision_response = analyze_image(screenshot_path, prompt)
+        if element is None:
+            return f"❌ Could not find '{element_description}' on screen using OmniParser."
         
-        # Check for vision API errors
-        if "❌" in vision_response or "FAILED" in vision_response:
-            return f"❌ Vision analysis failed: {vision_response}"
+        # Step 3: Get center coordinates
+        x, y = element['center']
         
-        logger.debug("Vision response: %s", vision_response)
-        
-        # Step 3: Parse coordinates
-        coords = _parse_coordinates(vision_response)
-        
-        if coords is None:
-            return f"❌ Could not find '{element_description}' on screen.\n\nVision response: {vision_response[:200]}"
-        
-        x, y = coords
+        logger.info(
+            "Found element: %s - %s at (%d, %d)", 
+            element['id'], element['description'], x, y
+        )
         
         # Step 4: Move and click
         logger.info("Moving to (%d, %d) and clicking", x, y)
@@ -227,7 +207,7 @@ Rules:
         time.sleep(0.2)
         pyautogui.click(x, y, clicks=clicks, button=button)
         
-        return f"✓ Found and clicked '{element_description}' at ({x}, {y})"
+        return f"✓ Found and clicked '{element_description}' ({element['id']}: {element['description']}) at ({x}, {y})"
     
     except Exception as e:
         logger.error("Error in click_element: %s", e)

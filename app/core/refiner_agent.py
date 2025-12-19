@@ -1,92 +1,128 @@
+"""
+Enhanced Prompt Refiner with intelligent element filtering and step-by-step planning.
+"""
+
 import json
 from typing import List, Dict
-
 from .llm import LLMClient
 from app.tools.tool_catalog import get_refiner_tools_text
 
 
 class PromptRefiner:
     """
-    A lightweight agent that refines raw user input into a clearer,
-    tool-friendly instruction before passing it to the main Windows agent.
-
-    Uses an OpenRouter-hosted Grok model for fast reasoning and rewriting.
+    Refines vague user requests into detailed, step-by-step execution plans.
+    Uses Groq for fast, intelligent refinement with element filtering.
     """
-
-    def __init__(self, model: str = "openrouter/tngtech/deepseek-r1t2-chimera:free"):
+    
+    def __init__(self, model: str = "groq/llama-3.3-70b-versatile"):
+        """Initialize with Groq for speed."""
         self.llm = LLMClient(model)
         tools_text = get_refiner_tools_text()
-        # IMPORTANT: Output MUST be strict JSON so the main agent can parse it.
+        
         self.system_prompt = (
-            "You are a prompt refiner for a Windows automation agent.\n\n"
+            "You are an expert at transforming vague requests into detailed, step-by-step execution plans.\n\n"
             f"{tools_text}\n\n"
-            "Your job is to create an EXECUTION PLAN that breaks down the user's request into sequential steps.\n"
-            "IMPORTANT: Each step should use ONLY ONE tool. The agent will execute these steps one at a time,\n"
-            "passing the results from each step to the next.\n\n"
-            "RESPONSE FORMAT (must be valid JSON, no extra text):\n"
+            "CRITICAL: BREAK COMPLEX REQUESTS INTO ATOMIC STEPS\n\n"
+            "Example: 'open daily dose of internet'\n"
+            "→ Step 1: Click 'Google Chrome' icon on taskbar\n"
+            "→ Step 2: Use Ctrl+L hotkey to focus URL bar\n"
+            "→ Step 3: Type 'youtube.com'\n"
+            "→ Step 4: Press Enter\n"
+            "→ Step 5: Click YouTube search bar\n"
+            "→ Step 6: Type 'daily dose of internet'\n"
+            "→ Step 7: Press Enter\n\n"
+            "RULES FOR COMPUTER CONTROL:\n"
+            "1. ONE action per step (click OR type OR hotkey, not multiple)\n"
+            "2. Be SPECIFIC about UI elements:\n"
+            "   - Taskbar: 'Chrome icon' or 'File Explorer icon'\n"
+            "   - URL bar: Use Ctrl+L (more reliable than clicking)\n"
+            "   - Buttons: Use exact text, e.g., 'Submit button'\n"
+            "3. For empty/invisible URL bars, ALWAYS use Ctrl+L hotkey\n"
+            "4. Include element_filter when clicking:\n"
+            "   - Taskbar icons: position_filter={'y_min': 0.9}, keyword_filter=['chrome']\n"
+            "   - URL bars: position_filter={'y_max': 0.15}, size_filter={'min_aspect_ratio': 10}\n"
+            "   - Search bars: type_filter=['text'], keyword_filter=['search']\n\n"
+            "RESPONSE FORMAT (JSON only, no markdown):\n"
             "{\n"
-            '  \"instruction\": \"<overall refined natural language instruction>\",\n'
-            '  \"execution_plan\": [\n'
-            '    {\n'
-            '      \"step\": 1,\n'
-            '      \"tool\": \"tool_name\",\n'
-            '      \"description\": \"what this step accomplishes\",\n'
-            '      \"instruction\": \"specific instruction for this tool call\"\n'
-            '    },\n'
-            '    ...\n'
-            '  ]\n'
+            '  "instruction": "Clear summary of the goal",\n'
+            '  "execution_plan": [\n'
+            "    {\n"
+            '      "step": 1,\n'
+            '      "tool": "click_element",\n'
+            '      "element_description": "Google Chrome",\n'
+            '      "element_filter": {\n'
+            '        "position_filter": {"y_min": 0.9},\n'
+            '        "type_filter": ["icon"],\n'
+            '        "keyword_filter": ["chrome", "browser"]\n'
+            "      },\n"
+            '      "description": "Open browser from taskbar"\n'
+            "    },\n"
+            "    {\n"
+            '      "step": 2,\n'
+            '      "tool": "hotkey",\n'
+            '      "keys": "ctrl+l",\n'
+            '      "description": "Focus URL bar"\n'
+            "    },\n"
+            "    {\n"
+            '      "step": 3,\n'
+            '      "tool": "type_text",\n'
+            '      "text": "youtube.com",\n'
+            '      "description": "Type URL"\n'
+            "    }\n"
+            "  ]\n"
             "}\n\n"
-            "Guidelines:\n"
-            "- Break complex requests into multiple steps (e.g., research then create document)\n"
-            "- Each step must use exactly ONE tool from the list above\n"
-            "- Order steps logically (e.g., web_search before create_presentation)\n"
-            "- Be explicit about filenames (with extensions), app names, and desired outputs\n"
-            "- The 'instruction' for each step should be clear about what data to use from previous steps\n\n"
-            "**COMPUTER CONTROL PREFERENCE:**\n"
-            "- If the user wants to INTERACT with Chrome/browser (click, type, navigate), use computer control tools\n"
-            "- If the user just wants INFORMATION (search results), use web_search\n"
-            "- Examples:\n"
-            "  'search for Python' → use web_search (just needs info)\n"
-            "  'open chrome and search for Python' → use click_element + type_text (needs interaction)\n"
-            "  'navigate to github.com' → use click_element + type_text (needs browser interaction)\n\n"
-            "**CRITICAL - IMAGE HANDLING:**\n"
-            "- If you see '[User attached image: <path>]' in the user input, you MUST include analyze_image as the FIRST step\n"
-            "- Step 1 must be: analyze_image with the image path and appropriate question\n"
-            "- Subsequent steps should use the image analysis result as context\n"
-            "- Example: If user says 'what's in this image', create 1 step with analyze_image\n"
-            "- Example: If user says 'describe this screenshot and create a report', create 2 steps:\n"
-            "  Step 1: analyze_image to understand what's in the image\n"
-            "  Step 2: create_note using the analysis from step 1\n\n"
-            "- When the user mentions an app by a friendly name, make it clear in the instruction\n"
-            "- Do NOT mention tool/function names or write pseudo-calls like '<function(...)>' inside instructions\n"
-            "- Do NOT explain your reasoning. Do NOT wrap the JSON in markdown\n"
-            "Return ONLY the JSON object, nothing else."
+            "BE ATOMIC. BE SPECIFIC. ONE ACTION PER STEP.\n"
+            "Return ONLY JSON, no extra text."
         )
-
+    
     def refine(self, user_input: str) -> Dict[str, object]:
         """
-        Refine the original user input into an execution plan with ordered steps.
-
-        Returns a dict with:
-            - instruction: str (overall instruction)
-            - execution_plan: List[Dict] (ordered list of steps, each with one tool)
+        Refine user input into a detailed execution plan.
+        
+        Returns:
+            {
+                "instruction": str,
+                "execution_plan": [
+                    {
+                        "step": int,
+                        "tool": str,
+                        "element_description": str (for click_element),
+                        "element_filter": dict (for click_element),
+                        "description": str,
+                        ...tool-specific params
+                    }
+                ]
+            }
         """
-        messages: List[Dict[str, str]] = [
+        messages = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_input},
+            {"role": "user", "content": user_input}
         ]
-        raw = self.llm.get_response_text(messages)
-
+        
+        raw = self.llm.get_response_text(messages, temperature=0.1)
+        
         try:
+            # Clean up markdown if present
+            raw = raw.strip().replace("```json", "").replace("```", "")
             data = json.loads(raw)
+            
             if not isinstance(data, dict):
-                raise ValueError("Refiner response is not a JSON object")
+                raise ValueError("Response is not a JSON object")
+            
             instruction = data.get("instruction") or user_input
             execution_plan = data.get("execution_plan") or []
+            
             if not isinstance(execution_plan, list):
                 execution_plan = []
-            return {"instruction": instruction, "execution_plan": execution_plan}
+            
+            return {
+                "instruction": instruction,
+                "execution_plan": execution_plan
+            }
+        
         except Exception as e:
-            # Fallback: use original input, empty execution plan
-            return {"instruction": user_input, "execution_plan": []}
-
+            # Fallback: use original input
+            return {
+                "instruction": user_input,
+                "execution_plan": []
+            }
