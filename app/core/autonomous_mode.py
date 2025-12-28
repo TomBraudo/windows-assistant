@@ -10,6 +10,7 @@ This mode uses a continuous feedback loop:
 """
 
 import json
+import time
 from typing import Dict, Any, List, Optional
 from .llm import LLMClient
 from .logging_utils import get_logger
@@ -217,6 +218,11 @@ Return ONLY the JSON, no extra text."""
             print(f"Iteration {iteration}/{self.max_iterations}")
             print(f"{'─'*60}")
             
+            # Wait for page to load after previous action (except first iteration)
+            if iteration > 1:
+                print("⏳ Waiting 3 seconds for page to load...")
+                time.sleep(3)
+            
             # Step 1: Observe current screen
             print("👁️  Observing screen...")
             screen_description = describe_screen()
@@ -308,14 +314,27 @@ Return JSON:
 }}"""
             
             try:
+                # Call refiner with proper system prompt
                 refiner_response = self.refiner.llm.get_response_text(
-                    [{"role": "user", "content": refiner_context}],
+                    [
+                        {"role": "system", "content": "You are an expert at analyzing UI elements and selecting the best one for a given task. Always return valid JSON with no markdown formatting."},
+                        {"role": "user", "content": refiner_context}
+                    ],
                     temperature=0.1
                 )
                 
+                # Log raw response for debugging
+                self.logger.debug("Refiner raw response: %s", refiner_response[:500])
+                
+                # Check if response is empty
+                if not refiner_response or not refiner_response.strip():
+                    raise ValueError("Refiner returned empty response")
+                
                 # Try to parse refiner suggestion
                 import json
-                refiner_suggestion = json.loads(refiner_response.strip().replace("```json", "").replace("```", ""))
+                cleaned_response = refiner_response.strip().replace("```json", "").replace("```", "").strip()
+                refiner_suggestion = json.loads(cleaned_response)
+                
                 print(f"💡 Refiner analysis: {refiner_suggestion.get('analysis', 'N/A')[:100]}...")
                 print(f"💡 Selected element: {refiner_suggestion.get('selected_element_id', 'N/A')}")
                 print(f"💡 Selection reasoning: {refiner_suggestion.get('element_selection_reasoning', 'N/A')[:150]}...")
@@ -330,7 +349,11 @@ Return JSON:
                 
             except Exception as e:
                 self.logger.warning("Refiner analysis failed: %s", e)
-                print(f"⚠️  Refiner analysis failed, continuing without it")
+                # Log the actual response if available for debugging
+                if 'refiner_response' in locals():
+                    self.logger.debug("Failed response content: %s", refiner_response[:500] if refiner_response else "None")
+                print(f"⚠️  Refiner analysis failed: {str(e)[:100]}")
+                print(f"   Continuing without refiner guidance...")
             
             # Step 2: Build context for LLM
             context = self._build_context(goal, screen_description, execution_history)
