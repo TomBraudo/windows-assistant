@@ -342,7 +342,8 @@ def scroll(clicks: int, direction: str = "down") -> str:
     try:
         logger.info("Scrolling %s by %d clicks", direction, clicks)
         
-        scroll_amount = clicks if direction == "up" else -clicks
+        # PyAutoGUI: positive = scroll down, negative = scroll up
+        scroll_amount = -clicks if direction == "up" else clicks
         pyautogui.scroll(scroll_amount)
         
         return f"✓ Scrolled {direction} by {clicks} clicks"
